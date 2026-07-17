@@ -7,7 +7,7 @@ from scipy.ndimage import gaussian_filter
 import time
 import math
 
-img: np.ndarray = sk.io.imread('./sample_data/PTL_real.png', as_gray=True)
+img: np.ndarray = sk.io.imread('./sample_data/0006.png', as_gray=True)
 img = (img * 255.0).astype(np.uint8)
 
 # Part 1: Thresholding methods
