@@ -66,14 +66,25 @@ elapsed = time.perf_counter() - start
 
 hours, remainder = divmod(elapsed, 3600)
 minutes, seconds = divmod(remainder, 60)
-
+print("\nOtsu's method testing... \n")
 print(f"Optimal threshold: {thresh}")
-print(f"Time taken: {seconds:.5f} seconds")
+print(f"Time taken: {seconds:.5f} seconds\n")
 
 mask = img < thresh
 
 plt.imshow(mask, cmap="gray")
 plt.show()
+
+# Porosity:
+
+void_pixels = np.count_nonzero(mask)
+total_pixels = mask.size
+
+print("Fetching porosity...\n")
+porosity = void_pixels / total_pixels
+print(f"Total void pixels: {void_pixels}")
+print(f"Total pixels: {total_pixels}")
+print(f"2D Porosity: {porosity:.2f}%\n")
 
 # Part 2: Thresholding evaluation
 
@@ -160,7 +171,7 @@ print(f"Connected components completed (took {seconds:.5f} seconds).")
 print(f"There are {len(img_regions.regions)} components.")
 avg_elongation = img_regions.average_elongation()
 print(f"Average Pore Elongation (Eccentricity): {avg_elongation:.4f}")
-print("Now showing regions!")
+print("\nNow showing regions!")
 img_regions.show()
 
 def harris_corners(img: np.ndarray, k: float = 0.05, sigma: float = 1.0, t: float = 0.05) -> np.ndarray:
