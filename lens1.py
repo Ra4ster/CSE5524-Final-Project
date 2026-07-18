@@ -7,8 +7,8 @@ from scipy.ndimage import gaussian_filter
 import time
 import math
 
-# img: np.ndarray = sk.io.imread('./sample_data/0006.png', as_gray=True)
-# img = (img * 255.0).astype(np.uint8)
+img: np.ndarray = sk.io.imread('./sample_data/PTL_real.png', as_gray=True)
+img = (img * 255.0).astype(np.uint8)
 
 # Part 1: Thresholding methods
 
@@ -71,8 +71,6 @@ def otsu(img: np.ndarray) -> tuple[int, float]:
 # print(f"Time taken: {seconds:.5f} seconds")
 
 # mask = img < thresh
-
-# print(np.sum(mask) / np.size(mask))
 
 # plt.imshow(mask, cmap="gray")
 # plt.show()
