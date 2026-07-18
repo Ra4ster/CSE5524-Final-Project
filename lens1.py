@@ -7,8 +7,8 @@ from scipy.ndimage import gaussian_filter
 import time
 import math
 
-img: np.ndarray = sk.io.imread('./sample_data/PTL_real.png', as_gray=True)
-img = (img * 255.0).astype(np.uint8)
+# img: np.ndarray = sk.io.imread('./sample_data/0006.png', as_gray=True)
+# img = (img * 255.0).astype(np.uint8)
 
 # Part 1: Thresholding methods
 
@@ -60,20 +60,22 @@ def otsu(img: np.ndarray) -> tuple[int, float]:
 
 # --- Example usage: ---
 
-start = time.perf_counter()
-thresh, _ = otsu(img)
-elapsed = time.perf_counter() - start
+# start = time.perf_counter()
+# thresh, _ = otsu(img)
+# elapsed = time.perf_counter() - start
 
-hours, remainder = divmod(elapsed, 3600)
-minutes, seconds = divmod(remainder, 60)
+# hours, remainder = divmod(elapsed, 3600)
+# minutes, seconds = divmod(remainder, 60)
 
-print(f"Optimal threshold: {thresh}")
-print(f"Time taken: {seconds:.5f} seconds")
+# print(f"Optimal threshold: {thresh}")
+# print(f"Time taken: {seconds:.5f} seconds")
 
-mask = img < thresh
+# mask = img < thresh
 
-plt.imshow(mask, cmap="gray")
-plt.show()
+# print(np.sum(mask) / np.size(mask))
+
+# plt.imshow(mask, cmap="gray")
+# plt.show()
 
 # Part 2: Thresholding evaluation
 
@@ -148,20 +150,35 @@ class ptl_ccl:
         plt.tight_layout()
         plt.show()
 
-print("Now making Connected Components; this may take a bit: ")
-start = time.perf_counter()
+    def save(self, filename: str) -> None:
+        img_overlay = sk.color.label2rgb(self.labels, bg_label=0)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.imshow(img_overlay)
 
-img_regions = ptl_ccl(mask, c=2, min_pixels=20)
+        for i, pore in enumerate(self.regions):
+            y0, x0 = pore.centroid
+            ax.text(x0, y0, str(i), color='white', fontsize=8, ha='center', va='center')
 
-elapsed = time.perf_counter() - start
-hours, remainder = divmod(elapsed, 3600)
-minutes, seconds = divmod(remainder, 60)
-print(f"Connected components completed (took {seconds:.5f} seconds).")
-print(f"There are {len(img_regions.regions)} components.")
-avg_elongation = img_regions.average_elongation()
-print(f"Average Pore Elongation (Eccentricity): {avg_elongation:.4f}")
-print("Now showing regions!")
-img_regions.show()
+        ax.set_axis_off()
+        plt.tight_layout()
+
+        fig.savefig(filename, bbox_inches='tight', dpi=300)
+        plt.close(fig)
+
+# print("Now making Connected Components; this may take a bit: ")
+# start = time.perf_counter()
+
+# img_regions = ptl_ccl(mask, c=2, min_pixels=20)
+
+# elapsed = time.perf_counter() - start
+# hours, remainder = divmod(elapsed, 3600)
+# minutes, seconds = divmod(remainder, 60)
+# print(f"Connected components completed (took {seconds:.5f} seconds).")
+# print(f"There are {len(img_regions.regions)} components.")
+# avg_elongation = img_regions.average_elongation()
+# print(f"Average Pore Elongation (Eccentricity): {avg_elongation:.4f}")
+# print("Now showing regions!")
+# img_regions.show()
 
 def harris_corners(img: np.ndarray, k: float = 0.05, sigma: float = 1.0, t: float = 0.05) -> np.ndarray:
     Ix = sk.filters.sobel_h(img)
@@ -180,18 +197,18 @@ def harris_corners(img: np.ndarray, k: float = 0.05, sigma: float = 1.0, t: floa
     mask = response > threshold
     return sk.feature.peak_local_max(response, min_distance=3, threshold_abs=threshold)
 
-print("Computing harris corner points of original image.")
-start = time.perf_counter()
+# print("Computing harris corner points of original image.")
+# start = time.perf_counter()
 
-hc = harris_corners(img.astype(float) / 255.0)
+# hc = harris_corners(img.astype(float) / 255.0)
 
-elapsed = time.perf_counter() - start
-hours, remainder = divmod(elapsed, 3600)
-minutes, seconds = divmod(remainder, 60)
-print(f"Harris corners calculated (there are {hc.size}). Time taken: {seconds:.5f} seconds.")
+# elapsed = time.perf_counter() - start
+# hours, remainder = divmod(elapsed, 3600)
+# minutes, seconds = divmod(remainder, 60)
+# print(f"Harris corners calculated (there are {hc.size}). Time taken: {seconds:.5f} seconds.")
 
-plt.imshow(img, cmap="gray")
-plt.scatter(hc[:,1], hc[:,0],
-            c="red", s=20)
-plt.show()
+# plt.imshow(img, cmap="gray")
+# plt.scatter(hc[:,1], hc[:,0],
+#             c="red", s=20)
+# plt.show()
 
