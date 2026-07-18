@@ -52,7 +52,7 @@ def otsu(img: np.ndarray) -> tuple[int, float]:
         mu1 = (mu_total - mu[t]) / w1
 
         s2 = w0 * w1 * (mu0 - mu1) ** 2
-        if s2 > var:
+        if s2 >= var:
             thresh = t
             var = s2
 
