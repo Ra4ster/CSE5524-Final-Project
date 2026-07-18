@@ -6,6 +6,7 @@ from skimage.measure._regionprops import RegionProperties as RegionProps
 from scipy.ndimage import gaussian_filter
 import time
 import math
+from typing import Optional
 
 img: np.ndarray = sk.io.imread('./sample_data/PTL_real.png', as_gray=True)
 img = (img * 255.0).astype(np.uint8)
@@ -25,11 +26,15 @@ def otsu(img: np.ndarray) -> tuple[int, float]:
         tuple[int, float]:
             thresh (int):
                 The optimal threshold in the range [0, 255].
+                For binary images, this is the non-zero pixel value (e.g., 255 or 1).
             var (float):
                 The maximum between-class variance.
     """
     
     flat = img.ravel()
+    unique = np.unique(flat)
+    if len(unique) == 2: # Binary image
+        return (128, 0.) # Just return middle
     sz = np.size(flat)
     thresh = 0 ; var = float("-inf")
 
@@ -98,11 +103,11 @@ class ptl_ccl:
     Porous Transport Layer's Connected Components Labeling (PTL-CCL)
     """
 
-    regions: list[RegionProps] = None
-    labels: np.ndarray = None
+    regions: list[RegionProps] = []
+    labels: Optional[np.ndarray] = None
 
     def __init__(self, img: np.ndarray, c: int = 2, min_pixels: int = 20):
-        self.labels = sk.measure.label(img, connectivity = c)
+        self.labels = sk.measure.label(img, connectivity = c, return_num=False)
         self.regions = [
             r for r in sk.measure.regionprops(self.labels)
             if r.area >= min_pixels
