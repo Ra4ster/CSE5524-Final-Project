@@ -8,9 +8,6 @@ import time
 import math
 from typing import Optional
 
-img: np.ndarray = sk.io.imread('./sample_data/PTL_real.png', as_gray=True)
-img = (img * 255.0).astype(np.uint8)
-
 # Part 1: Thresholding methods
 
 def otsu(img: np.ndarray) -> tuple[int, float]:

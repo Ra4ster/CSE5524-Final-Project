@@ -91,7 +91,7 @@ class ptl_dataset:
         sheet = self.workbook.active
         if rows == None:
             rows: int = sheet.max_row
-            print(f"[DEBUG] There are {rows} rows")
+            print(f"[DEBUG] There are {rows} rows in {self.xlsx.name}")
         
         # Populate lists from workbook (skip header row)
         for row in sheet.iter_rows(min_row=2, values_only=True, max_row=rows):
@@ -141,69 +141,74 @@ class ptl_dataset:
         return [self.porosity_actual[i] - result[i] for i in range(len(result))]
 
 
-testdata = ptl_dataset(xlsx="../ptl_cv_dataset/PTL_CV_Dataset.xlsx")
+def main():
+    testdata = ptl_dataset(xlsx="../ptl_cv_dataset/PTL_CV_Dataset.xlsx")
 
-porosities: list[float] = []
-diffs: list[float] = []
-elongations: list[float] = []
-junction_densities: list[float] = []
+    porosities: list[float] = []
+    diffs: list[float] = []
+    elongations: list[float] = []
+    junction_densities: list[float] = []
 
-print("Processing dataset and extracting features...")
-for i, img in enumerate(testdata.images):
-    t, _ = otsu(img)
-    
-    porosity = np.sum(img > t) / img.size
-    porosities.append(porosity)
-    
-    a = testdata.local_slice_porosity[i]
-    diffs.append(a - porosity) # Ground truth
-    
-    mask = img < t # This may take a while!
-    ccl = ptl_ccl(mask, c=2, min_pixels=20)
-    elongations.append(ccl.average_elongation())
+    print("Processing dataset and extracting features...")
+    for i, img in enumerate(testdata.images):
+        t, _ = otsu(img)
+        
+        porosity = np.sum(img > t) / img.size
+        porosities.append(porosity)
+        
+        a = testdata.local_slice_porosity[i]
+        diffs.append(a - porosity) # Ground truth
+        
+        mask = img < t # This may take a while!
+        ccl = ptl_ccl(mask, c=2, min_pixels=20)
+        elongations.append(ccl.average_elongation())
 
-    # Junction Density
-    hc = harris_corners(img.astype(float) / 255.)
-    density = len(hc) / img.size
-    junction_densities.append(density)
+        # Junction Density
+        hc = harris_corners(img.astype(float) / 255.)
+        density = len(hc) / img.size
+        junction_densities.append(density)
 
-# MSE
-mse = np.sum([diff**2 for diff in diffs]) / len(diffs)
-print(f"[RESULT] Otsu's True 2D MSE: {mse}")
+    # MSE
+    mse = np.sum([diff**2 for diff in diffs]) / len(diffs)
+    print(f"[RESULT] Otsu's True 2D MSE: {mse}")
 
-# Correlations
-corr_tau_z, p_tau = pearsonr(elongations, testdata.tau_z)
-corr_radius, p_rad = pearsonr(junction_densities, testdata.r_lg_um)
+    # Correlations
+    corr_tau_z, p_tau = pearsonr(elongations, testdata.tau_z)
+    corr_radius, p_rad = pearsonr(junction_densities, testdata.r_lg_um)
 
-print(f"[RESULT] Elongation vs. Tortuosity (Z) Correlation: {corr_tau_z:.4f}")
-print(f"[RESULT] Junction Density vs. Fiber Radius Correlation: {corr_radius:.4f}")
+    print(f"[RESULT] Elongation vs. Tortuosity (Z) Correlation: {corr_tau_z:.4f}")
+    print(f"[RESULT] Junction Density vs. Fiber Radius Correlation: {corr_radius:.4f}")
 
-print("\nExporting results to Excel...")
-out_wb = op.Workbook()
-out_sheet = out_wb.active
-out_sheet.title = "Lens 1 Results"
+    print("\nExporting results to Excel...")
+    out_wb = op.Workbook()
+    out_sheet = out_wb.active
+    out_sheet.title = "Lens 1 Results"
 
-headers = [
-    "Image_ID", 
-    "True_2D_Porosity", 
-    "Otsu_Porosity", 
-    "Porosity_Error", 
-    "Average_Elongation", 
-    "Junction_Density"
-]
-out_sheet.append(headers)
-
-for i in range(len(testdata.images)):
-    row_data = [
-        testdata.img_ids[i],
-        testdata.local_slice_porosity[i],
-        porosities[i],
-        diffs[i],
-        elongations[i],
-        junction_densities[i]
+    headers = [
+        "Image_ID", 
+        "True_2D_Porosity", 
+        "Otsu_Porosity", 
+        "Porosity_Error", 
+        "Average_Elongation", 
+        "Junction_Density"
     ]
-    out_sheet.append(row_data)
+    out_sheet.append(headers)
 
-output_filename = "Lens1_Results.xlsx"
-out_wb.save(output_filename)
-print(f"[RESULT] Successfully saved to {output_filename}")
+    for i in range(len(testdata.images)):
+        row_data = [
+            testdata.img_ids[i],
+            testdata.local_slice_porosity[i],
+            porosities[i],
+            diffs[i],
+            elongations[i],
+            junction_densities[i]
+        ]
+        out_sheet.append(row_data)
+
+    output_filename = "Lens1_Results.xlsx"
+    out_wb.save(output_filename)
+    print(f"[RESULT] Successfully saved to {output_filename}")
+
+
+if __name__ == "__main__":
+    main()
