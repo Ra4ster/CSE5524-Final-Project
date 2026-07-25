@@ -1,6 +1,8 @@
 # Project Pandora Explained
 ### Authors: Amit Ghosh & Jack Rose
 
+![Model 028 Visualization](results/Model_0028_Visualization.gif)
+
 ## Lens 1
 - `lens1.py`:
   - Otsu acts as the binary mask, converting real images into `[1,0]`.
@@ -29,6 +31,8 @@ Exporting results to Excel...
 ```
 
 Otsu's thresholding is exceptionally accurate at identifying the pores, proven by the near-zero mean squared error ($4.9 \times 10^{-34}$) against the dataset's ground truth porosity. However, while 2D pore elongation completely fails to predict 3D tortuosity ($-0.0190$), the Harris corner junction density proves to be a strong predictor for material structure, demonstrating that thinner fiber radii consistently generate significantly more physical intersections ($-0.6314$).
+
+> **TODO:** We could use other methods besides Otsu's (watershed, Chan-Vese) and also run the pipeline with real images, so we can test IoU/Dice.
 
 ## Lens 2
 > **WIP**
