@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import skimage as sk
-from skimage.measure._regionprops import RegionProperties as RegionProps
 from scipy.ndimage import gaussian_filter
 import time
 import math
@@ -100,7 +99,7 @@ class ptl_ccl:
     Porous Transport Layer's Connected Components Labeling (PTL-CCL)
     """
 
-    regions: list[RegionProps] = []
+    regions = []
     labels: Optional[np.ndarray] = None
 
     def __init__(self, img: np.ndarray, c: int = 2, min_pixels: int = 20):
@@ -110,7 +109,7 @@ class ptl_ccl:
             if r.area >= min_pixels
         ]
 
-    def pores(self) -> list[RegionProps]:
+    def pores(self) -> list:
         return self.regions
     
     def eccentricity(self, i: int) -> float:
@@ -180,7 +179,7 @@ class ptl_ccl:
 # print("Now showing regions!")
 # img_regions.show()
 
-def harris_corners(img: np.ndarray, k: float = 0.05, sigma: float = 1.0, t: float = 0.05) -> np.ndarray:
+def harris_corners(img: np.ndarray, k: float = 0.01, sigma: float = 1., t: float = 0.01, m: float =0) -> np.ndarray:
     Ix = sk.filters.sobel_h(img)
     Iy = sk.filters.sobel_v(img)
 
@@ -195,7 +194,7 @@ def harris_corners(img: np.ndarray, k: float = 0.05, sigma: float = 1.0, t: floa
 
     threshold = t * response.max()
     mask = response > threshold
-    return sk.feature.peak_local_max(response, min_distance=3, threshold_abs=threshold)
+    return sk.feature.peak_local_max(response, min_distance=m, threshold_abs=threshold)
 
 # print("Computing harris corner points of original image.")
 # start = time.perf_counter()

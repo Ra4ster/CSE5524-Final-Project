@@ -140,7 +140,6 @@ class ptl_dataset:
     def cmp_porosities(self, result: list[float]) -> list[float]:
         return [self.porosity_actual[i] - result[i] for i in range(len(result))]
 
-
 def main():
     testdata = ptl_dataset(xlsx="../ptl_cv_dataset/PTL_CV_Dataset.xlsx")
 
@@ -148,6 +147,9 @@ def main():
     diffs: list[float] = []
     elongations: list[float] = []
     junction_densities: list[float] = []
+    
+    # New list to track raw corner counts per slice
+    raw_corner_counts: list[int] = []
 
     print("Processing dataset and extracting features...")
     for i, img in enumerate(testdata.images):
@@ -159,19 +161,22 @@ def main():
         a = testdata.local_slice_porosity[i]
         diffs.append(a - porosity) # Ground truth
         
-        mask = img < t # This may take a while!
-        ccl = ptl_ccl(mask, c=2, min_pixels=20)
+        mask = img < t 
+        ccl = ptl_ccl(mask, c=2, min_pixels=0)
         elongations.append(ccl.average_elongation())
 
-        # Junction Density
+        # Junction Density & Raw Counts
         hc = harris_corners(img.astype(float) / 255.)
-        density = len(hc) / img.size
+        num_corners = len(hc)
+        raw_corner_counts.append(num_corners)
+        
+        density = num_corners / img.size
         junction_densities.append(density)
 
     # MSE
     mse = np.sum([diff**2 for diff in diffs]) / len(diffs)
     print(f"[RESULT] Otsu's True 2D MSE: {mse}")
-
+    
     # Correlations
     corr_tau_z, p_tau = pearsonr(elongations, testdata.tau_z)
     corr_radius, p_rad = pearsonr(junction_densities, testdata.r_lg_um)
@@ -179,10 +184,29 @@ def main():
     print(f"[RESULT] Elongation vs. Tortuosity (Z) Correlation: {corr_tau_z:.4f}")
     print(f"[RESULT] Junction Density vs. Fiber Radius Correlation: {corr_radius:.4f}")
 
-    print("\nExporting results to Excel...")
+    print("\nCalculating Model-Level Harris Statistics...")
+    unique_models = list(dict.fromkeys(testdata.model_ids))
+    model_harris_stats = []
+
+    for model in unique_models:
+        # Get all slice indices for the current model
+        indices = [i for i, mid in enumerate(testdata.model_ids) if mid == model]
+        model_corner_counts = [raw_corner_counts[i] for i in indices]
+        
+        model_harris_stats.append({
+            "Model_ID": model,
+            "Mean_Corners": np.mean(model_corner_counts),
+            "Variance_Corners": np.var(model_corner_counts),
+            "Max_Corners": np.max(model_corner_counts),
+            "Min_Corners": np.min(model_corner_counts)
+        })
+
+    print("Exporting results to Excel...")
     out_wb = op.Workbook()
+    
+    # Sheet 1: Image-Level Data
     out_sheet = out_wb.active
-    out_sheet.title = "Lens 1 Results"
+    out_sheet.title = "Lens 1 Image Results"
 
     headers = [
         "Image_ID", 
@@ -190,7 +214,8 @@ def main():
         "Otsu_Porosity", 
         "Porosity_Error", 
         "Average_Elongation", 
-        "Junction_Density"
+        "Junction_Density",
+        "Raw_Corner_Count"
     ]
     out_sheet.append(headers)
 
@@ -201,13 +226,34 @@ def main():
             porosities[i],
             diffs[i],
             elongations[i],
-            junction_densities[i]
+            junction_densities[i],
+            raw_corner_counts[i]
         ]
         out_sheet.append(row_data)
 
+    # Sheet 2: Model-Level Harris Corner Stats
+    model_sheet = out_wb.create_sheet(title="Model Harris Stats")
+    model_headers = [
+        "Model_ID", 
+        "Mean_Corners", 
+        "Variance_Corners", 
+        "Max_Corners", 
+        "Min_Corners"
+    ]
+    model_sheet.append(model_headers)
+
+    for stat in model_harris_stats:
+        model_sheet.append([
+            stat["Model_ID"], 
+            stat["Mean_Corners"], 
+            stat["Variance_Corners"], 
+            stat["Max_Corners"], 
+            stat["Min_Corners"]
+        ])
+
     output_filename = "Lens1_Results.xlsx"
     out_wb.save(output_filename)
-    print(f"[RESULT] Successfully saved to {output_filename}")
+    print(f"[RESULT] Successfully saved both sheets to {output_filename}")
 
 
 if __name__ == "__main__":

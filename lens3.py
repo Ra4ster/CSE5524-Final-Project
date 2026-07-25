@@ -61,14 +61,14 @@ def riemann_distance(C_i: np.ndarray, C_j: np.ndarray) -> float:
 def main():
     data = ptl_dataset(xlsx="../ptl_cv_dataset/PTL_CV_Dataset.xlsx")
     
-    # Get a list of unique model IDs while preserving order
     unique_models = list(dict.fromkeys(data.model_ids))
     
     model_drift_variances = []
     model_porosity_variances = []
     
-    print("Running Lens 3 Covariance Tracking...")
+    print("Running Lens 3 Covariance Tracking (Calculating drifts)...")
     
+    # PASS 1: Calculate all the math first
     for current_model in unique_models:
         indices = [i for i, mid in enumerate(data.model_ids) if mid == current_model]
         model_images = [data.images[i] for i in indices]
@@ -77,15 +77,19 @@ def main():
         covs = [features(img) for img in model_images]
         drifts = [riemann_distance(covs[i], covs[i+1]) for i in range(len(covs)-1)]
         
-        drift_variance = np.var(drifts)
-        model_drift_variances.append(drift_variance)
+        model_drift_variances.append(np.var(drifts))
+        model_porosity_variances.append(np.var(model_porosities))
         
-        porosity_variance = np.var(model_porosities)
-        model_porosity_variances.append(porosity_variance)
+    # CALCULATION: Now that the list is full, find the 85th percentile
+    threshold = np.percentile(model_drift_variances, 85)
+    print(f"\n--- Dynamic Threshold set to: {threshold:.4f} ---")
+    
+    # PASS 2: Label and print the results
+    for i, current_model in enumerate(unique_models):
+        drift_variance = model_drift_variances[i]
+        porosity_variance = model_porosity_variances[i]
         
-        threshold = 0.5 
         label = "Heterogeneous" if drift_variance > threshold else "Homogeneous"
-        
         print(f"[{current_model}] Drift Variance: {drift_variance:.4f} | Porosity Variance: {porosity_variance:.6f} | Label: {label}")
 
     # Correlate your visual drift against true porosity variance
@@ -97,10 +101,12 @@ def main():
     print(f"Spearman Correlation: {spearman_corr:.4f}")
     
     # Plot a single model's drift curve to fulfill the visualization deliverable
-    plt.plot(range(1, len(drifts)+1), drifts, marker='o')
-    plt.title(f"Covariance Drift Curve for {unique_models[0]}")
-    plt.xlabel("Depth Transition (Slice i to i+1)")
-    plt.ylabel("Riemannian Distance")
+    plt.plot(range(1, 39), model_drift_variances, marker='o')
+    plt.title("Covariance Drift Variance Across All Models")
+    plt.xlabel("Model Index")
+    plt.ylabel("Drift Variance")
+    plt.axhline(y=threshold, color='r', linestyle='--', label="85th Percentile Threshold")
+    plt.legend()
     plt.show()
 
     saved = input("Would you like to save the drift to Excel? (y/n): ")
@@ -113,8 +119,6 @@ def main():
         wb.save("Lens3_Drift_Results.xlsx")
     else:
         print("Drift results not saved.")
-
-
 
 if __name__ == "__main__":
     main()
