@@ -15,7 +15,7 @@ def main():
     data = ptl_dataset(xlsx="../ptl_cv_dataset/PTL_CV_Dataset.xlsx")
     
     # Pick a highly heterogeneous model so the visual shifts are obvious
-    target_model = "Model_0028"
+    target_model = "Model_0001"
     print(f"Extracting data for {target_model}...")
     
     indices = [i for i, mid in enumerate(data.model_ids) if mid == target_model]
