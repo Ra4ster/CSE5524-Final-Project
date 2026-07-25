@@ -147,8 +147,6 @@ def main():
     diffs: list[float] = []
     elongations: list[float] = []
     junction_densities: list[float] = []
-    
-    # New list to track raw corner counts per slice
     raw_corner_counts: list[int] = []
 
     print("Processing dataset and extracting features...")
