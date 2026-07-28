@@ -3,6 +3,7 @@ import scipy
 import skimage as sk
 from skimage.feature import ORB, match_descriptors
 import matplotlib.pyplot as plt
+from lens1 import otsu
 from lens1_analysis import ptl_dataset
 import warnings
 import openpyxl as op
@@ -80,9 +81,28 @@ def main():
         model_drift_variances.append(np.var(drifts))
         model_porosity_variances.append(np.var(model_porosities))
         
-    # CALCULATION: Now that the list is full, find the 85th percentile
-    threshold = np.percentile(model_drift_variances, 85)
-    print(f"\n--- Dynamic Threshold set to: {threshold:.4f} ---")
+    # CALCULATION: Use custom Otsu from Lens 1
+    drift_vars_array = np.array(model_drift_variances)
+    
+    # 1. Scale the float variances to 0-255 uint8 integers so np.bincount doesn't crash
+    d_min = drift_vars_array.min()
+    d_max = drift_vars_array.max()
+    
+    if d_max > d_min:
+        drift_uint8 = ((drift_vars_array - d_min) / (d_max - d_min) * 255.0).astype(np.uint8)
+    else:
+        drift_uint8 = np.zeros_like(drift_vars_array, dtype=np.uint8)
+        
+    # 2. Call your custom otsu function
+    t_uint8, _ = otsu(drift_uint8)
+    
+    # 3. Map the uint8 threshold back to the original continuous variance scale
+    if d_max > d_min:
+        threshold = t_uint8 / 255.0 * (d_max - d_min) + d_min
+    else:
+        threshold = d_min
+        
+    print(f"\n--- Custom Otsu Threshold set to: {threshold:.6f} ---")
     
     # PASS 2: Label and print the results
     for i, current_model in enumerate(unique_models):
@@ -90,7 +110,7 @@ def main():
         porosity_variance = model_porosity_variances[i]
         
         label = "Heterogeneous" if drift_variance > threshold else "Homogeneous"
-        print(f"[{current_model}] Drift Variance: {drift_variance:.4f} | Porosity Variance: {porosity_variance:.6f} | Label: {label}")
+        print(f"[{current_model}] Drift Variance: {drift_variance:.6f} | Porosity Variance: {porosity_variance:.6f} | Label: {label}")
 
     # Correlate your visual drift against true porosity variance
     pearson_corr, _ = pearsonr(model_drift_variances, model_porosity_variances)
@@ -100,12 +120,11 @@ def main():
     print(f"Correlation between Covariance Drift and True Porosity Variance: {pearson_corr:.4f}")
     print(f"Spearman Correlation: {spearman_corr:.4f}")
     
-    # Plot a single model's drift curve to fulfill the visualization deliverable
-    plt.plot(range(1, 39), model_drift_variances, marker='o')
-    plt.title("Covariance Drift Variance Across All Models")
+    plt.plot(range(1, len(unique_models) + 1), model_drift_variances, marker='o')
+    plt.title("Covariance Drift Variance Across All Models (Custom Otsu)")
     plt.xlabel("Model Index")
     plt.ylabel("Drift Variance")
-    plt.axhline(y=threshold, color='r', linestyle='--', label="85th Percentile Threshold")
+    plt.axhline(y=threshold, color='r', linestyle='--', label=f"Otsu Threshold ({threshold:.6f})")
     plt.legend()
     plt.show()
 

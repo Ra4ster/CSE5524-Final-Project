@@ -151,46 +151,44 @@ def main():
 
     print("Processing dataset and extracting features...")
     for i, img in enumerate(testdata.images):
+        assert img.ndim == 2, f"Image {testdata.img_ids[i]} is not 2D grayscale (shape={img.shape})"
+
         t, _ = otsu(img)
-        
+
         porosity = np.sum(img > t) / img.size
         porosities.append(porosity)
-        
+
         a = testdata.local_slice_porosity[i]
-        diffs.append(a - porosity) # Ground truth
-        
-        mask = img < t 
-        ccl = ptl_ccl(mask, c=2, min_pixels=0)
+        diffs.append(a - porosity)
+
+        mask = img > t
+        ccl = ptl_ccl(mask, c=2, min_pixels=10)
         elongations.append(ccl.average_elongation())
 
-        # Junction Density & Raw Counts
-        hc = harris_corners(img.astype(float) / 255.)
+        hc = harris_corners(img.astype(float) / 255., t=0.03, m=3)
         num_corners = len(hc)
         raw_corner_counts.append(num_corners)
-        
+
         density = num_corners / img.size
         junction_densities.append(density)
 
-    # MSE
     mse = np.sum([diff**2 for diff in diffs]) / len(diffs)
     print(f"[RESULT] Otsu's True 2D MSE: {mse}")
-    
-    # Correlations
+
     corr_tau_z, p_tau = pearsonr(elongations, testdata.tau_z)
     corr_radius, p_rad = pearsonr(junction_densities, testdata.r_lg_um)
 
-    print(f"[RESULT] Elongation vs. Tortuosity (Z) Correlation: {corr_tau_z:.4f}")
-    print(f"[RESULT] Junction Density vs. Fiber Radius Correlation: {corr_radius:.4f}")
+    print(f"[RESULT] Elongation vs. Tortuosity (Z) Correlation: {corr_tau_z:.4f} (p={p_tau:.4g})")
+    print(f"[RESULT] Junction Density vs. Fiber Radius Correlation: {corr_radius:.4f} (p={p_rad:.4g})")
 
     print("\nCalculating Model-Level Harris Statistics...")
     unique_models = list(dict.fromkeys(testdata.model_ids))
     model_harris_stats = []
 
     for model in unique_models:
-        # Get all slice indices for the current model
         indices = [i for i, mid in enumerate(testdata.model_ids) if mid == model]
         model_corner_counts = [raw_corner_counts[i] for i in indices]
-        
+
         model_harris_stats.append({
             "Model_ID": model,
             "Mean_Corners": np.mean(model_corner_counts),
@@ -201,17 +199,16 @@ def main():
 
     print("Exporting results to Excel...")
     out_wb = op.Workbook()
-    
-    # Sheet 1: Image-Level Data
+
     out_sheet = out_wb.active
     out_sheet.title = "Lens 1 Image Results"
 
     headers = [
-        "Image_ID", 
-        "True_2D_Porosity", 
-        "Otsu_Porosity", 
-        "Porosity_Error", 
-        "Average_Elongation", 
+        "Image_ID",
+        "True_2D_Porosity",
+        "Otsu_Porosity",
+        "Porosity_Error",
+        "Average_Elongation",
         "Junction_Density",
         "Raw_Corner_Count"
     ]
@@ -229,23 +226,22 @@ def main():
         ]
         out_sheet.append(row_data)
 
-    # Sheet 2: Model-Level Harris Corner Stats
     model_sheet = out_wb.create_sheet(title="Model Harris Stats")
     model_headers = [
-        "Model_ID", 
-        "Mean_Corners", 
-        "Variance_Corners", 
-        "Max_Corners", 
+        "Model_ID",
+        "Mean_Corners",
+        "Variance_Corners",
+        "Max_Corners",
         "Min_Corners"
     ]
     model_sheet.append(model_headers)
 
     for stat in model_harris_stats:
         model_sheet.append([
-            stat["Model_ID"], 
-            stat["Mean_Corners"], 
-            stat["Variance_Corners"], 
-            stat["Max_Corners"], 
+            stat["Model_ID"],
+            stat["Mean_Corners"],
+            stat["Variance_Corners"],
+            stat["Max_Corners"],
             stat["Min_Corners"]
         ])
 
